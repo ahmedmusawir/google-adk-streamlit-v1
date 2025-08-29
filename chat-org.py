@@ -14,43 +14,36 @@ st.title("⚡ Cyberize Agentic Automation")
 N8N_WEBHOOK_URL = "http://127.0.0.1:5678/webhook/f11820f4-aaf0-4bb8-b536-b9097cc67877" 
 
 # --- Session State Initialization ---
-# This block MUST run before any other logic attempts to access these keys.
 if 'user_id' not in st.session_state:
     st.session_state.user_id = f"st-user-{uuid.uuid4()}"
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "session_id" not in st.session_state:
-    st.session_state.session_id = None
-if "current_agent" not in st.session_state:
-    st.session_state.current_agent = None
-
 
 # --- Helper Function to Call the n8n Webhook (Updated) ---
-# 1. Update the function definition and payload
-def call_n8n_webhook(agent_name, message, user_id, session_id):
+def call_n8n_webhook(agent_name, message, user_id):
     """
     Makes a POST request and correctly parses the double-layered JSON response.
     """
     payload = {
         "agent_name": agent_name,
         "message": message,
-        "userId": user_id,
-        "session_id": session_id  # This will stop the wrapper make new session every message
+        "userId": user_id
     }
-
     try:
         response = requests.post(N8N_WEBHOOK_URL, json=payload, timeout=90)
         response.raise_for_status()
-    
+
         # --- THIS IS THE NEW PARSING LOGIC ---
+        # 1. Parse the outer JSON to get the 'data' string
         outer_data = response.json()
         data_string = outer_data.get("data")
+
+        # 2. Parse the inner JSON string to get the final message
         if data_string:
             inner_data = json.loads(data_string)
-            # Return the whole object, not just the message
-            return inner_data
+            return inner_data.get("message", "Error: 'message' key not found in inner JSON.")
         else:
-            return {"message": "Error: 'data' key not found in n8n response."}
+            return "Error: 'data' key not found in n8n response."
         # --- END OF NEW LOGIC ---
 
     except requests.exceptions.RequestException as e:
@@ -68,40 +61,21 @@ selected_agent = st.sidebar.selectbox("Choose an agent:", options=agent_options)
 st.sidebar.info(f"Chatting with: **{selected_agent}**")
 
 # --- Main Chat Interface ---
-# Logic to reset session when agent is changed
-if st.session_state.current_agent != selected_agent:
-    st.session_state.current_agent = selected_agent
-    st.session_state.messages = []
-    st.session_state.session_id = None # Reset to None for Agent Switching
-    st.rerun()
-
-# Display existing messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-
-# 2. Update the main chat input loop to handle the new response
 if prompt := st.chat_input(f"Ask {selected_agent} a question..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.spinner("Orchestrator is working..."):
-        # The response_data will now be an object like { message: "...", session_id: "..." }
-        response_data = call_n8n_webhook(
+        assistant_response = call_n8n_webhook(
             agent_name=selected_agent,
             message=prompt,
-            user_id=st.session_state.user_id,
-            session_id=st.session_state.session_id
+            user_id=st.session_state.user_id
         )
-
-    # Extract the message for display
-    assistant_response = response_data.get("message", "Error: No message found in response.")
-    
-    # CRITICAL: Update the session_id in our state with the one from the wrapper
-    if "session_id" in response_data:
-        st.session_state.session_id = response_data["session_id"]
 
     st.session_state.messages.append({"role": "assistant", "content": assistant_response})
     with st.chat_message("assistant"):
