@@ -70,7 +70,7 @@ def fetch_history(agent_name, user_id, session_id):
 
 # --- Sidebar ---
 st.sidebar.title("Configuration")
-agent_options = ["greeting_agent", "calc_agent", "jarvis_agent"]
+agent_options = ["greeting_agent", "calc_agent", "jarvis_agent", "product_agent"]
 selected_agent = st.sidebar.selectbox("Choose an agent:", options=agent_options)
 st.sidebar.info(f"Chatting with: **{selected_agent}**")
 

@@ -7,7 +7,7 @@ st.title("🎛️ Mission Control")
 st.markdown("Update agent instructions in real-time.")
 
 # --- Agent Configuration ---
-AGENT_NAMES = ["greeting_agent", "calc_agent", "jarvis_agent"]
+AGENT_NAMES = ["greeting_agent", "calc_agent", "jarvis_agent", "product_agent"]
 
 # --- UI for each agent ---
 for agent in AGENT_NAMES:
